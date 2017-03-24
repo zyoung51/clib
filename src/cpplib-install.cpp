@@ -9,11 +9,11 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+extern "C" {
 #include "asprintf/asprintf.h"
 #include "fs/fs.h"
 #include "tempdir/tempdir.h"
 #include "commander/commander.h"
-#include "clib-package/clib-package.h"
 #include "http-get/http-get.h"
 #include "logger/logger.h"
 #include "debug/debug.h"
@@ -21,6 +21,9 @@
 #include "str-concat/str-concat.h"
 #include "str-replace/str-replace.h"
 #include "config.h"
+#include <curl/curl.h>
+}
+#include "clib-package/clib-package.h"
 
 debug_t debugger;
 
@@ -30,6 +33,7 @@ struct options {
   int dev;
   int save;
   int savedev;
+  const char * cfg;
 };
 
 static struct options opts;
@@ -68,11 +72,19 @@ setopt_savedev(command_t *self) {
   debug(&debugger, "set savedev flag");
 }
 
+static void
+setopt_cfg(command_t * self) {
+  opts.cfg = (char*)self->arg;
+  debug(&debugger, "set config to: %s", opts.cfg);
+}
+
 /**
  * Install dependency packages at `pwd`.
  */
 static int
 install_local_packages() {
+    int rc = 0;
+
   if (-1 == fs_exists("./package.json")) {
     logger_error("error", "Missing package.json");
     return 1;
@@ -82,10 +94,13 @@ install_local_packages() {
   char *json = fs_read("./package.json");
   if (NULL == json) return 1;
 
-  clib_package_t *pkg = clib_package_new(json, opts.verbose);
+  debug(&debugger, "reading configuration options");
+  char *cfg = fs_read(opts.cfg);
+
+  clib_package_t *pkg = clib_package_new(json, opts.verbose, cfg);
   if (NULL == pkg) goto e1;
 
-  int rc = clib_package_install_dependencies(pkg, opts.dir, opts.verbose);
+  rc = clib_package_install_dependencies(pkg, opts.dir, opts.verbose);
   if (-1 == rc) goto e2;
 
   if (opts.dev) {
@@ -101,6 +116,7 @@ e2:
   clib_package_free(pkg);
 e1:
   free(json);
+  free(cfg);
   return 1;
 }
 
@@ -222,7 +238,7 @@ write_dependency(clib_package_t *pkg, char* prefix) {
 static int
 save_dependency(clib_package_t *pkg) {
   debug(&debugger, "saving dependency %s at %s", pkg->name, pkg->version);
-  return write_dependency(pkg, "dependencies");
+  return write_dependency(pkg, (char *)"dependencies");
 }
 
 /**
@@ -231,7 +247,7 @@ save_dependency(clib_package_t *pkg) {
 static int
 save_dev_dependency(clib_package_t *pkg) {
   debug(&debugger, "saving dev dependency %s at %s", pkg->name, pkg->version);
-  return write_dependency(pkg, "development");
+  return write_dependency(pkg, (char *)"development");
 }
 
 /**
@@ -239,10 +255,9 @@ save_dev_dependency(clib_package_t *pkg) {
  */
 
 static int
-install_package(const char *slug) {
+install_package(const char *slug, const char * cfg) {
   int rc;
-
-  clib_package_t *pkg = clib_package_new_from_slug(slug, opts.verbose);
+  clib_package_t *pkg = clib_package_new_from_slug(slug, opts.verbose, cfg);
   if (NULL == pkg) return -1;
 
   if (pkg->install) {
@@ -268,10 +283,18 @@ check_save:
 
 static int
 install_packages(int n, char *pkgs[]) {
+  debug(&debugger, "reading configuration options");
+  char *cfg = fs_read(opts.cfg);
+
   for (int i = 0; i < n; i++) {
     debug(&debugger, "install %s (%d)", pkgs[i], i);
-    if (-1 == install_package(pkgs[i])) return 1;
+    if (-1 == install_package(pkgs[i], cfg)) {
+      free(cfg);
+      return 1;
+    }
   }
+
+  free(cfg);
   return 0;
 }
 
@@ -288,7 +311,9 @@ main(int argc, char *argv[]) {
 #endif
   opts.verbose = 1;
   opts.dev = 0;
+  opts.cfg = "./config.json";
 
+  curl_global_init(CURL_GLOBAL_ALL);
   debug_init(&debugger, "clib-install");
 
   command_t program;
@@ -324,6 +349,11 @@ main(int argc, char *argv[]) {
       , "--save-dev"
       , "save development dependency in package.json"
       , setopt_savedev);
+  command_option(&program
+      , "-c"
+      , "--cfg <name>"
+      , "specify configuration file to  [name]"
+      , setopt_cfg);
   command_parse(&program, argc, argv);
 
   debug(&debugger, "%d arguments", program.argc);
