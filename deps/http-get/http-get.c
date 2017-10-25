@@ -39,25 +39,25 @@ static size_t http_get_cb(void *contents, size_t size, size_t nmemb, void *userp
 http_get_response_t *http_get(const char *url) {
   CURL *req = curl_easy_init();
 
-  static http_get_response_t res;
-  res.data = malloc(1);
-  res.size = 0;
+  http_get_response_t * res = (http_get_response_t*)malloc(sizeof(http_get_response_t));
+  res->data = malloc(1);
+  res->size = 0;
 
   curl_easy_setopt(req, CURLOPT_URL, url);
   curl_easy_setopt(req, CURLOPT_HTTPGET, 1);
   curl_easy_setopt(req, CURLOPT_FOLLOWLOCATION, 1);
   curl_easy_setopt(req, CURLOPT_WRITEFUNCTION, http_get_cb);
-  curl_easy_setopt(req, CURLOPT_WRITEDATA, (void *)&res);
+  curl_easy_setopt(req, CURLOPT_WRITEDATA, res);
   curl_easy_setopt(req, CURLOPT_SSL_VERIFYPEER, 0L);
   curl_easy_setopt(req, CURLOPT_SSL_VERIFYHOST, 0L);
-
+  curl_easy_setopt(req, CURLOPT_USERAGENT, "cpplib");
   int c = curl_easy_perform(req);
 
-  curl_easy_getinfo(req, CURLINFO_RESPONSE_CODE, &res.status);
-  res.ok = (200 == res.status && CURLE_ABORTED_BY_CALLBACK != c) ? 1 : 0;
+  curl_easy_getinfo(req, CURLINFO_RESPONSE_CODE, &res->status);
+  res->ok = (200 == res->status && CURLE_ABORTED_BY_CALLBACK != c) ? 1 : 0;
   curl_easy_cleanup(req);
 
-  return &res;
+  return res;
 }
 
 /**
@@ -86,6 +86,7 @@ int http_get_file(const char *url, const char *file) {
   curl_easy_setopt(req, CURLOPT_WRITEDATA, fp);
   curl_easy_setopt(req, CURLOPT_SSL_VERIFYPEER, 0L);
   curl_easy_setopt(req, CURLOPT_SSL_VERIFYHOST, 0L);
+  curl_easy_setopt(req, CURLOPT_USERAGENT, "cpplib");
 
   int res = curl_easy_perform(req);
 
@@ -105,4 +106,5 @@ int http_get_file(const char *url, const char *file) {
 void http_get_free(http_get_response_t *res) {
   if (NULL == res) return;
   free(res->data);
+  free(res);
 }

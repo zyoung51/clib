@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+extern "C" {
 #include "case/case.h"
 #include "commander/commander.h"
 #include "tempdir/tempdir.h"
@@ -17,11 +18,12 @@
 #include "http-get/http-get.h"
 #include "asprintf/asprintf.h"
 #include "wiki-registry/wiki-registry.h"
-#include "clib-package/clib-package.h"
 #include "console-colors/console-colors.h"
 #include "strdup/strdup.h"
 #include "logger/logger.h"
 #include "debug/debug.h"
+}
+#include "clib-package/clib-package.h"
 #include "config.h"
 
 #define CLIB_WIKI_URL "https://github.com/clibs/clib/wiki/Packages"
@@ -105,6 +107,9 @@ clib_search_file(void) {
 static char *
 wiki_html_cache() {
   char *cache_file = clib_search_file();
+  long now, modified, delta;
+  fs_stats *stats = NULL;
+
   if (NULL == cache_file) return NULL;
 
   if (0 == opt_cache) {
@@ -112,12 +117,12 @@ wiki_html_cache() {
     goto set_cache;
   }
 
-  fs_stats *stats = fs_stat(cache_file);
+  stats = fs_stat(cache_file);
   if (NULL == stats) goto set_cache;
 
-  long now = (long) time(NULL);
-  long modified = stats->st_mtime;
-  long delta = now - modified;
+  now = (long) time(NULL);
+  modified = stats->st_mtime;
+  delta = now - modified;
 
   debug(&debugger, "cache delta %d (%d - %d)", delta, now, modified);
   free(stats);

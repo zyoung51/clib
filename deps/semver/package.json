@@ -1,0 +1,10 @@
+{
+  "name": "semver",
+  "version": "0.2.0",
+  "repo": "zyoung51/semver.c",
+  "author": "Tomas Aparicio",
+  "license": "MIT",
+  "description": "Semantic version parser and render written in ANSI C",
+  "keywords": ["semver", "semantic", "versioning", "version", "parser", "dependencies", "matcher", "ansi"],
+  "src": ["semver.c", "semver.h"]
+}

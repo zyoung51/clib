@@ -9,11 +9,13 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+extern "C" {
 #include "trim/trim.h"
 #include "asprintf/asprintf.h"
 #include "which/which.h"
 #include "str-flatten/str-flatten.h"
 #include "debug/debug.h"
+}
 #include "config.h"
 
 debug_t debugger;

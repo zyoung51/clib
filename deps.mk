@@ -9,6 +9,7 @@ include $(top_srcdir)/deps/str-ends-with/str-ends-with.mk
 include $(top_srcdir)/deps/parse-repo/parse-repo.mk
 include $(top_srcdir)/deps/debug/debug.mk
 include $(top_srcdir)/deps/wildcardcmp/wildcardcmp.mk
+include $(top_srcdir)/deps/semver/semver.mk
 include $(top_srcdir)/deps/commander/commander.mk
 include $(top_srcdir)/deps/wiki-registry/wiki-registry.mk
 include $(top_srcdir)/deps/gumbo-parser/gumbo-parser.mk
